@@ -1,4 +1,6 @@
-# NetSentry — AI-Based Intrusion Detection System
+# NetSentry — AI-Based Network Intrusion Detection System
+
+**Live demo:** [your-render-url-here.onrender.com](#) *(replace this link once deployed — see Deployment section below. Note: the live demo supports Simulate and manual input only; real packet capture requires running locally, see that section for why.)*
 
 A working prototype matching the architecture:
 
@@ -133,6 +135,12 @@ These two buttons work differently, and it's worth understanding why:
 
 If asked in an interview why these two buttons can classify the same-looking numbers differently: that's the honest answer -- one is a live approximation from limited real-time signals, the other replays genuine unseen data. Real IDS deployments face exactly this tension between what you can cheaply measure in real time versus the full feature set a model was trained on.
 
+### Forcing a specific category (demo aid)
+
+Two categories -- Heartbleed (3 of 139 demo rows) and Infiltration (11 of 139) -- are naturally rare, mirroring their scarcity in the real dataset (11 and 36 rows respectively, out of 2.2 million). Random "Simulate" clicks only have a ~2-8% chance of hitting them.
+
+The dashboard's **"Force Specific Category"** dropdown (`/api/simulate_category`) lets you pick any of the 7 categories and reliably classify a real example of it on demand -- useful for demoing the full range of detections without relying on random luck.
+
 ---
 
 ## Real packet capture (`capture_traffic.py`)
@@ -174,4 +182,21 @@ The original ensemble logic flagged an alert if **any one of the three models** 
 **Fix:** the ensemble now requires **at least 2 of the 3 models to agree** before raising an alert, rather than acting on any single model's opinion. This meaningfully reduces false positives from Isolation Forest's known weakness while still catching genuine attacks (verified against both the manual-input DDoS test and the real-data `/api/simulate` samples, which still correctly flag ~85-90% of attack rows).
 
 This is worth mentioning directly in an interview: *"I tested my model against my own live traffic and found false positives caused by concept drift between 2017 training data and 2026 real traffic -- then fixed it with a majority-vote ensemble instead of hiding or ignoring the issue."* That's a stronger, more credible story than a demo that only shows curated success cases.
+
+---
+
+## Deployment
+
+The Flask app (`app_v2.py`) can be deployed as a public web service using [Render](https://render.com) (free tier):
+
+1. Push this repo to GitHub
+2. On Render: **New +** -> **Web Service** -> connect this repo
+3. Build command: `pip install -r requirements.txt`
+4. Start command: `gunicorn app_v2:app`
+5. Deploy -- Render gives you a public URL (e.g. `https://netsentry-ids.onrender.com`)
+
+**Important limitation:** only the **Simulate** and **manual "Analyze Sample"** features work on a public deployment. The **real packet capture tool (`capture_traffic.py`) cannot run on a hosted server** -- it reads packets directly from your own machine's network adapter, which a cloud server has no access to. That tool is designed to be run locally, on your own PC, as a live demo during an interview rather than as part of the hosted link.
+
+Free-tier hosting spins down after ~15 minutes of inactivity, so the first request after idle time may take 30-60 seconds to respond -- this is expected free-tier behavior, not a bug.
+
 
