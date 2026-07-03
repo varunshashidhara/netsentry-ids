@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NetSentry v2 // IDS Console (CICIDS2017)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #0a0d0a; --panel: #10140f; --line: #1f2a1c; --text: #c9d6c4; --dim: #5c6b57;
+    --green: #4fd672; --amber: #e8b34a; --red: #ef5350; --crit: #ff3b5c;
+    --mono: "IBM Plex Mono", "SF Mono", "Consolas", monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px;
+    background-image: linear-gradient(rgba(79,214,114,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,214,114,0.02) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 18px 28px;
+    border-bottom: 1px solid var(--line); background: linear-gradient(180deg, #0d110c, #0a0d0a); }
+  header h1 { font-size: 16px; letter-spacing: 3px; margin: 0; color: var(--green); text-transform: uppercase; }
+  header h1 span { color: var(--dim); font-weight: normal; letter-spacing: 1px; }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+    margin-right: 8px; box-shadow: 0 0 8px var(--green); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.35;} }
+  .clock { color: var(--dim); font-size: 12px; }
+  main { padding: 24px 28px; max-width: 1200px; margin: 0 auto; }
+  .banner { border: 1px solid var(--amber); color: var(--amber); padding: 10px 14px; font-size: 11px;
+    margin-bottom: 18px; letter-spacing: 0.5px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); padding: 14px 16px; }
+  .stat .label { color: var(--dim); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+  .stat .value { font-size: 26px; margin-top: 6px; color: var(--text); }
+  .stat.alert .value { color: var(--red); }
+  .stat.ok .value { color: var(--green); }
+  .grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; align-items: start; }
+  .panel { background: var(--panel); border: 1px solid var(--line); }
+  .panel-head { padding: 10px 16px; border-bottom: 1px solid var(--line); color: var(--dim); font-size: 11px;
+    letter-spacing: 2px; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+  .panel-body { padding: 0; max-height: 480px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--dim); font-weight: normal; text-transform: uppercase; font-size: 10px; letter-spacing: 1px;
+    position: sticky; top: 0; background: var(--panel); }
+  tr.attack td { color: var(--red); }
+  tr.critical td { color: var(--crit); font-weight: bold; }
+  tr.normal td { color: var(--dim); }
+  .badge { padding: 2px 8px; border: 1px solid currentColor; font-size: 10px; text-transform: uppercase; }
+  .controls { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .controls label { color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+    display:block; margin-bottom: 4px;}
+  .controls input, .controls select { width: 100%; background: #0d110c; border: 1px solid var(--line);
+    color: var(--text); padding: 8px; font-family: var(--mono); font-size: 12px; }
+  .btn { background: transparent; border: 1px solid var(--green); color: var(--green); padding: 10px;
+    font-family: var(--mono); text-transform: uppercase; letter-spacing: 1px; cursor: pointer; font-size: 11px;
+    transition: all .15s; }
+  .btn:hover { background: var(--green); color: #04150a; }
+  .btn.secondary { border-color: var(--dim); color: var(--dim); }
+  .btn.secondary:hover { background: var(--dim); color: #04150a; }
+  .field-row { display: flex; gap: 8px; }
+  .field-row > div { flex: 1; }
+  footer { text-align: center; color: var(--dim); font-size: 10px; padding: 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="status-dot"></span>NetSentry <span>// AI Intrusion Detection Console (CICIDS2017)</span></h1>
+  <div class="clock" id="clock"></div>
+</header>
+
+<main>
+
+  <div class="banner">
+    Trained on real CICIDS2017 flow data (DoS, DDoS, PortScan, Botnet, Infiltration, Heartbleed).
+    This release of the dataset has no IP/protocol columns, so Source IP below is a label only, not a model input.
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="label">Samples Analyzed</div><div class="value" id="stat-total">0</div></div>
+    <div class="stat ok"><div class="label">Normal Traffic</div><div class="value" id="stat-normal">0</div></div>
+    <div class="stat alert"><div class="label">Alerts Raised</div><div class="value" id="stat-alerts">0</div></div>
+    <div class="stat"><div class="label">Top Threat</div><div class="value" id="stat-top" style="font-size:14px;">--</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-head">
+        <span>Live Alert Feed</span>
+        <label style="font-size:10px; text-transform:none; letter-spacing:0;">
+          <input type="checkbox" id="attacksOnly"> attacks only
+        </label>
+      </div>
+      <div class="panel-body">
+        <table>
+          <thead>
+            <tr><th>Time</th><th>Source IP</th><th>Dst Port</th><th>Duration (µs)</th><th>Packets</th><th>Pkts/s</th><th>Classification</th><th>Risk</th></tr>
+          </thead>
+          <tbody id="alert-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span>Inject Traffic Sample</span></div>
+      <div class="controls">
+        <div>
+          <label>Source IP (label only)</label>
+          <input id="in-ip" value="192.168.1.2">
+        </div>
+        <div class="field-row">
+          <div>
+            <label>Destination Port</label>
+            <input id="in-port" type="number" value="443" min="0" max="65535">
+          </div>
+          <div>
+            <label>Total Packets</label>
+            <input id="in-packets" type="number" value="20" min="1">
+          </div>
+        </div>
+        <div>
+          <label>Flow Duration (microseconds)</label>
+          <input id="in-duration" type="number" value="300000" min="1">
+        </div>
+        <div>
+          <label>Packets / sec</label>
+          <input id="in-pps" type="number" value="15" min="0">
+        </div>
+        <button class="btn" onclick="sendSample()">Analyze Sample</button>
+        <div style="height:1px; background:var(--line); margin: 6px 0;"></div>
+        <button class="btn secondary" onclick="simulate()">Simulate Random Traffic</button>
+        <button class="btn secondary" id="auto-btn" onclick="toggleAuto()">Start Auto-Simulation</button>
+        <div style="height:1px; background:var(--line); margin: 6px 0;"></div>
+        <label>Force Specific Category (demo aid)</label>
+        <select id="category-picker"></select>
+        <button class="btn secondary" onclick="simulateCategory()">Simulate This Category</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>Network Flow Data (CICIDS2017) &rarr; Python &rarr; ML Model (Random Forest / Decision Tree / Isolation Forest) &rarr; Flask API &rarr; SQLite &rarr; Dashboard</footer>
+
+<script>
+let autoTimer = null;
+function tickClock() {
+  document.getElementById('clock').textContent = new Date().toISOString().replace('T',' ').slice(0,19) + ' UTC';
+}
+setInterval(tickClock, 1000); tickClock();
+
+async function loadCategories() {
+  const res = await fetch('/api/categories');
+  const cats = await res.json();
+  const picker = document.getElementById('category-picker');
+  picker.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+loadCategories();
+
+async function simulateCategory() {
+  const category = document.getElementById('category-picker').value;
+  await fetch('/api/simulate_category', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ category })
+  });
+  refreshAll();
+}
+
+function riskClass(risk, isAttack) {
+  if (!isAttack) return 'normal';
+  if (risk === 'Critical' || risk === 'High') return 'critical';
+  return 'attack';
+}
+
+async function refreshAlerts() {
+  const onlyAttacks = document.getElementById('attacksOnly').checked;
+  const res = await fetch(`/api/alerts?limit=40&attacks_only=${onlyAttacks}`);
+  const rows = await res.json();
+  const tbody = document.getElementById('alert-rows');
+  tbody.innerHTML = rows.map(r => `
+    <tr class="${riskClass(r.risk_level, r.is_attack)}">
+      <td>${r.timestamp.slice(11,19)}</td>
+      <td>${r.ip}</td>
+      <td>${r.dest_port}</td>
+      <td>${Math.round(r.flow_duration)}</td>
+      <td>${r.total_packets}</td>
+      <td>${r.packets_per_sec}</td>
+      <td>${r.is_attack ? '&#9888; ' + r.attack_type : 'Normal'}</td>
+      <td><span class="badge">${r.risk_level}</span></td>
+    </tr>
+  `).join('');
+}
+
+async function refreshStats() {
+  const res = await fetch('/api/stats');
+  const s = await res.json();
+  document.getElementById('stat-total').textContent = s.total_traffic_samples;
+  document.getElementById('stat-normal').textContent = s.normal_traffic;
+  document.getElementById('stat-alerts').textContent = s.total_alerts;
+  const byType = s.by_type || {};
+  const top = Object.entries(byType).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('stat-top').textContent = top ? top[0] : '--';
+}
+
+async function refreshAll() { await Promise.all([refreshAlerts(), refreshStats()]); }
+
+async function sendSample() {
+  const payload = {
+    ip: document.getElementById('in-ip').value,
+    dest_port: parseInt(document.getElementById('in-port').value || 0),
+    flow_duration: parseFloat(document.getElementById('in-duration').value || 0),
+    total_packets: parseInt(document.getElementById('in-packets').value || 0),
+    packets_per_sec: parseFloat(document.getElementById('in-pps').value || 0),
+  };
+  await fetch('/api/predict', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+  });
+  refreshAll();
+}
+
+async function simulate() {
+  await fetch('/api/simulate', { method: 'POST' });
+  refreshAll();
+}
+
+function toggleAuto() {
+  const btn = document.getElementById('auto-btn');
+  if (autoTimer) {
+    clearInterval(autoTimer); autoTimer = null; btn.textContent = 'Start Auto-Simulation';
+  } else {
+    autoTimer = setInterval(simulate, 1500); btn.textContent = 'Stop Auto-Simulation';
+  }
+}
+
+document.getElementById('attacksOnly').addEventListener('change', refreshAlerts);
+refreshAll();
+setInterval(refreshAll, 3000);
+</script>
+
+</body>
+</html>

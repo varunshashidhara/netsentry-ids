@@ -1,0 +1,19 @@
+# Raw datasets -- too large for GitHub, download instructions are in README.md
+data/KDDTrain.txt
+data/KDDTest.txt
+data_v2/cicids2017_sample.csv
+*.csv
+!models_v2/demo_samples.csv
+
+# SQLite databases (runtime-generated, not source)
+*.db
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS files
+.DS_Store
+Thumbs.db
