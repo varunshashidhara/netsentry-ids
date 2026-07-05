@@ -115,6 +115,24 @@ The near-perfect supervised accuracy is a **known, documented property of CICIDS
 
 **Heartbleed (11 rows) and Infiltration (36 rows) are too rare to model reliably**, regardless of resampling — this is a real-world data scarcity problem, not something fixable by adjusting the pipeline. Worth mentioning if asked, rather than letting the 99%+ multi-class numbers imply otherwise.
 
+### Update: retrained on the full 2.2M-row dataset for realistic class balance
+
+The models were later retrained on the complete CICIDS2017 sample (2,214,469 rows) instead of the size-constrained 581,632-row downsample described above, restoring the dataset's natural ~75% benign / ~25% attack proportions instead of the inverted 93%/7% ratio.
+
+**This produced one clear improvement and one clear tradeoff:**
+
+| Metric | Downsampled (93% attack) | Full dataset (75% benign) |
+|---|---|---|
+| Isolation Forest accuracy | 49.6% (near chance) | **79.4%** |
+| Botnet precision | 90% | **24%** (recall stayed at 98%) |
+| Random Forest / Decision Tree accuracy | ~99.9% | ~99.9% (essentially unchanged) |
+
+**Why Isolation Forest improved:** its core assumption -- normal traffic is the majority, attacks are rare outliers -- only holds when trained on realistic proportions. Restoring the natural ratio fixed this directly.
+
+**Why Botnet precision dropped:** Botnet is an extremely rare class in real proportions (1,966 of 2.2 million rows, ~0.09%). Against a much larger, more diverse pool of normal traffic, the model has a harder time drawing a clean boundary around such a rare class, leading to more false "Botnet" labels on traffic that isn't actually Botnet -- even though it still catches 98% of genuine Botnet traffic.
+
+**This is the version currently deployed.** It was chosen over the downsampled version because it reflects the dataset's real, intended proportions rather than an artifact of a file-size constraint, and because a non-functional Isolation Forest (one third of the ensemble) was judged a more significant flaw than reduced precision on one rare category. This is a classic, well-documented tension in imbalanced classification -- fixing overall class balance for one purpose can measurably affect a specific rare-class metric elsewhere -- and is worth stating plainly rather than only reporting whichever number looks best.
+
 ### Files added for v2
 | File | Purpose |
 |---|---|
