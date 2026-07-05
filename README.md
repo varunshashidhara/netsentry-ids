@@ -1,6 +1,6 @@
 # NetSentry — AI-Based Network Intrusion Detection System
 
-**Live demo:** [netsentry-ids.onrender.com](https://netsentry-ids.onrender.com) *(free-tier hosting — first load after inactivity may take 30-60 seconds to wake up. Supports Simulate and manual input; real packet capture requires running locally, see that section below for why.)*
+**Live demo:** [netsentry-ids-legacy.onrender.com](https://netsentry-ids-legacy.onrender.com) *(free-tier hosting — first load after inactivity may take 30-60 seconds to wake up. Supports Simulate and manual input; real packet capture requires running locally, see that section below for why.)*
 
 A working prototype matching the architecture:
 
